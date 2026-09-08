@@ -883,7 +883,7 @@
         grid.innerHTML = `<div class="add-card" onclick="window.addNewCustomer()"><h1>+</h1><p style="font-weight:bold">录入新档案</p></div>`;
         grid.innerHTML += data.map(u => `
             <div class="pro-card" onclick="window.openEdit(${u.id})">
-                <div class="img-box"><img src="${u.img}" onerror="this.src='https://via.placeholder.com/400x500?text=No+Image'"></div>
+                <div class="img-box"><img src="${u.img}" loading="lazy" onerror="this.src='...'"></div>
                 <div class="card-info"><h3>${u.name}</h3></div>
             </div>
         `).join('');

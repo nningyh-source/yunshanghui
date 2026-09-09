@@ -1128,17 +1128,22 @@
     };
 
     window.runRealisticSimulation = function() {
-        if(!document.getElementById('hidden-pr-a').value || !document.getElementById('hidden-pr-b').value) {
-            return alert("请先选择需要融合的两种纹样（Source A & B）");
-        }
-        
-        const l = document.getElementById('ai-loader-pr'); 
-        const grid = document.getElementById('res-grid-pr'); 
-        const hint = document.getElementById('hint-txt-pr');
-        const st = document.getElementById('status-txt'); 
-        const f = document.getElementById('prog-fill'); 
-        const p = document.getElementById('perc-txt'); 
-        const act = document.getElementById('mj-actions');
+    if(!document.getElementById('hidden-pr-a').value || !document.getElementById('hidden-pr-b').value) {
+        return alert("请先选择需要融合的两种纹样（Source A & B）");
+    }
+    
+    // 👇【新增代码开始：后台偷偷预加载生成的6张图】👇
+    let preloadImages = window.fusionToggle ? 
+        ["结果图1.jpg", "结果图2.jpg", "结果图3.jpg", "结果图4.jpg", "结果图5.jpg", "结果图6.jpg"] : 
+        ["新结果1.jpg", "新结果2.jpg", "新结果3.jpg", "新结果4.jpg", "新结果5.jpg", "新结果6.jpg"];
+    preloadImages.forEach(src => {
+        const tempImg = new Image();
+        tempImg.src = src; 
+    });
+    // 👆【新增代码结束】👆
+
+    const l = document.getElementById('ai-loader-pr'); 
+    // ... 下面保持你原来的代码不变 ...
         
         hint.style.display = 'none'; 
         grid.style.display = 'none'; 

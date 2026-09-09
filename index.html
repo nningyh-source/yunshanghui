@@ -965,7 +965,7 @@
         document.getElementById('m-lbl-back').innerText = "背面图 (Back)";
     };
 
-    window.runMeasureProcess = function() {
+window.runMeasureProcess = function() {
         const uId = document.getElementById('hidden-measure-uid').value;
         if(!uId) return alert("请先选择目标客户");
         const user = window.customerDB.find(u => u.id == uId);
@@ -982,7 +982,23 @@
         btnStart.style.display = 'none';
         progFill.style.width = '0%';
         
-        const stages = [ {p: 20, t: "正在剥离环境背景..."}, {p: 45, t: "提取人体轮廓及关节特征点..."}, {p: 75, t: "测算 24 项体表数据..."}, {p: 100, t: "高精度 3D 量体完成"} ];
+        // 核心：获取三张点云图并监控加载状态
+        let loadSources = [
+            user.res_front || getFallbackSvg("正面AI标注", "333333", "ffffff"),
+            user.res_side || getFallbackSvg("侧面AI标注", "333333", "ffffff"),
+            user.res_back || getFallbackSvg("背面AI标注", "333333", "ffffff")
+        ];
+
+        let imagePromises = loadSources.map(src => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+                img.src = src;
+            });
+        });
+
+        const stages = [ {p: 20, t: "正在剥离环境背景..."}, {p: 45, t: "提取人体轮廓及关节特征点..."}, {p: 75, t: "测算 24 项体表数据..."}, {p: 99, t: "正在同步量体结果..."} ];
         let step = 0;
         function process() {
             if(step < stages.length) {
@@ -991,19 +1007,24 @@
                 step++; 
                 setTimeout(process, 800 + Math.random() * 500); 
             } else {
-                setTimeout(() => {
-                    loader.style.display = 'none'; 
-                    btnStart.style.display = 'block'; btnStart.innerText = "重新扫描 (Re-scan)"; 
-                    document.getElementById('m-img-front').src = user.res_front || getFallbackSvg("正面AI标注", "333333", "ffffff");
-                    document.getElementById('m-img-side').src = user.res_side || getFallbackSvg("侧面AI标注", "333333", "ffffff");
-                    document.getElementById('m-img-back').src = user.res_back || getFallbackSvg("背面AI标注", "333333", "ffffff");
-                    document.getElementById('m-lbl-front').innerText = "正面测量标注";
-                    document.getElementById('m-lbl-side').innerText = "侧面测量标注";
-                    document.getElementById('m-lbl-back').innerText = "背面测量标注";
-                    window.renderMeasureTable(user);
-                    emptyState.style.display = 'none';
-                    dataContent.style.display = 'flex';
-                }, 400);
+                Promise.all(imagePromises).then(() => {
+                    statusTxt.innerText = "高精度 3D 量体完成";
+                    progFill.style.width = '100%';
+
+                    setTimeout(() => {
+                        loader.style.display = 'none'; 
+                        btnStart.style.display = 'block'; btnStart.innerText = "重新扫描 (Re-scan)"; 
+                        document.getElementById('m-img-front').src = loadSources[0];
+                        document.getElementById('m-img-side').src = loadSources[1];
+                        document.getElementById('m-img-back').src = loadSources[2];
+                        document.getElementById('m-lbl-front').innerText = "正面测量标注";
+                        document.getElementById('m-lbl-side').innerText = "侧面测量标注";
+                        document.getElementById('m-lbl-back').innerText = "背面测量标注";
+                        window.renderMeasureTable(user);
+                        emptyState.style.display = 'none';
+                        dataContent.style.display = 'flex';
+                    }, 300);
+                });
             }
         }
         process();
@@ -1051,7 +1072,7 @@
         document.getElementById('hidden-p-t').value = pattern.id;
     };
 
-    window.runPatternSimulation = function() {
+window.runPatternSimulation = function() {
         const uId = document.getElementById('hidden-p-u').value;
         const tId = document.getElementById('hidden-p-t').value;
         if(!uId) return alert("请在左侧选择目标客户");
@@ -1061,22 +1082,36 @@
         const s = document.getElementById('status-pa'); const f = document.getElementById('prog-pa-fill'); const ex = document.getElementById('pa-exports');
         
         h.style.display='none'; i.style.display='none'; ex.style.visibility='hidden'; ex.style.opacity='0'; l.style.display='flex'; f.style.width='0%';
-        const stages = [ {p:15, t:"解析输入参数..."}, {p:50, t:"自动匹配松量并建立力学演算..."}, {p:100, t:"高精度版型数据渲染完成"} ];
+
+        // 核心：强制加载纸样图
+        let imgPromise = new Promise((resolve) => {
+            const tempPaImg = new Image();
+            tempPaImg.onload = () => resolve();
+            tempPaImg.onerror = () => resolve();
+            tempPaImg.src = "最终纸样.jpg";
+        });
+
+        const stages = [ {p:15, t:"解析输入参数..."}, {p:50, t:"自动匹配松量并建立力学演算..."}, {p:99, t:"正在同步版型数据..."} ];
         let step = 0;
         function process() {
             if(step < stages.length) {
                 s.innerText = stages[step].t; f.style.width = stages[step].p + '%'; step++; 
                 setTimeout(process, 1000 + Math.random() * 600);
             } else {
-                setTimeout(() => { 
-                    l.style.display='none'; i.src="最终纸样.jpg"; i.style.display='block'; 
-                    ex.style.visibility='visible'; ex.style.opacity='1'; 
-                }, 500);
+                imgPromise.then(() => {
+                    s.innerText = "高精度版型数据渲染完成";
+                    f.style.width = '100%';
+
+                    setTimeout(() => { 
+                        l.style.display='none'; i.src="最终纸样.jpg"; i.style.display='block'; 
+                        ex.style.visibility='visible'; ex.style.opacity='1'; 
+                    }, 300);
+                });
             }
         }
         process();
     };
-
+    
     // --- 图案系统专属功能 ---
     window.selectGenModel = function(modelName) {
         document.getElementById('pr-model-display').innerText = modelName;
@@ -1127,23 +1162,18 @@
         }
     };
 
-    window.runRealisticSimulation = function() {
-    if(!document.getElementById('hidden-pr-a').value || !document.getElementById('hidden-pr-b').value) {
-        return alert("请先选择需要融合的两种纹样（Source A & B）");
-    }
-    
-    // 👇【新增代码开始：后台偷偷预加载生成的6张图】👇
-    let preloadImages = window.fusionToggle ? 
-        ["结果图1.jpg", "结果图2.jpg", "结果图3.jpg", "结果图4.jpg", "结果图5.jpg", "结果图6.jpg"] : 
-        ["新结果1.jpg", "新结果2.jpg", "新结果3.jpg", "新结果4.jpg", "新结果5.jpg", "新结果6.jpg"];
-    preloadImages.forEach(src => {
-        const tempImg = new Image();
-        tempImg.src = src; 
-    });
-    // 👆【新增代码结束】👆
-
-    const l = document.getElementById('ai-loader-pr'); 
-    // ... 下面保持你原来的代码不变 ...
+window.runRealisticSimulation = function() {
+        if(!document.getElementById('hidden-pr-a').value || !document.getElementById('hidden-pr-b').value) {
+            return alert("请先选择需要融合的两种纹样（Source A & B）");
+        }
+        
+        const l = document.getElementById('ai-loader-pr'); 
+        const grid = document.getElementById('res-grid-pr'); 
+        const hint = document.getElementById('hint-txt-pr');
+        const st = document.getElementById('status-txt'); 
+        const f = document.getElementById('prog-fill'); 
+        const p = document.getElementById('perc-txt'); 
+        const act = document.getElementById('mj-actions');
         
         hint.style.display = 'none'; 
         grid.style.display = 'none'; 
@@ -1151,37 +1181,50 @@
         l.style.display = 'flex'; 
         f.style.width = '0%';
         
+        // 1. 确定要下载的图片
+        let resultImages = window.fusionToggle ? 
+            ["结果图1.jpg", "结果图2.jpg", "结果图3.jpg", "结果图4.jpg", "结果图5.jpg", "结果图6.jpg"] : 
+            ["新结果1.jpg", "新结果2.jpg", "新结果3.jpg", "新结果4.jpg", "新结果5.jpg", "新结果6.jpg"];
+
+        // 2. 核心大招：创建强制等待锁 (Promise.all)
+        let imagePromises = resultImages.map(src => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(); // 下载成功，放行
+                img.onerror = () => resolve(); // 下载失败也放行，防止死循环卡死
+                img.src = src;
+            });
+        });
+
+        // 3. 动画过程：最后一步设定为 99%
         let stage = 0; 
-        const stages = [{p:30, t:"采样向量..."}, {p:70, t:"去噪迭代..."}, {p:100, t:"输出成品"}];
+        const stages = [{p:30, t:"采样向量..."}, {p:70, t:"去噪迭代..."}, {p:99, t:"正在同步高清图像..."}];
         
         function run() {
             if(stage < stages.length) { 
-                st.innerText = stages[stage].t; f.style.width = stages[stage].p + '%'; p.innerText = stages[stage].p + '%'; stage++; 
+                st.innerText = stages[stage].t; 
+                f.style.width = stages[stage].p + '%'; 
+                p.innerText = stages[stage].p + '%'; 
+                stage++; 
                 setTimeout(run, 1200 + Math.random() * 800); 
             } else { 
-                l.style.display='none'; 
-                
-                let resultImages = [];
-                if (window.fusionToggle) {
-                    resultImages = [
-                        "结果图1.jpg", "结果图2.jpg", "结果图3.jpg", 
-                        "结果图4.jpg", "结果图5.jpg", "结果图6.jpg"
-                    ];
-                } else {
-                    resultImages = [
-                        "新结果1.jpg", "新结果2.jpg", "新结果3.jpg", 
-                        "新结果4.jpg", "新结果5.jpg", "新结果6.jpg"
-                    ];
-                }
-                
-                grid.innerHTML = '';
-                for(let k=0; k<6; k++) {
-                    grid.innerHTML += `<img src="${resultImages[k]}" style="width: 100%; aspect-ratio: 638 / 836; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); background: #fff;" onerror="this.src='https://via.placeholder.com/638x836?text=Result+${k+1}'">`;
-                }
-                
-                window.fusionToggle = !window.fusionToggle; 
-                grid.style.display = 'grid'; 
-                act.style.visibility = 'visible'; act.style.opacity = '1'; act.style.pointerEvents = 'auto';
+                // 4. 进度条跑完后，停住！等待所有图片下载完毕再执行下一步
+                Promise.all(imagePromises).then(() => {
+                    st.innerText = "输出成品"; 
+                    f.style.width = '100%'; 
+                    p.innerText = '100%'; 
+
+                    setTimeout(() => { // 稍微停留0.3秒给用户看一眼100%
+                        l.style.display='none'; 
+                        grid.innerHTML = '';
+                        for(let k=0; k<6; k++) {
+                            grid.innerHTML += `<img src="${resultImages[k]}" loading="lazy" style="width: 100%; aspect-ratio: 638 / 836; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); background: #fff;" onerror="this.src='https://via.placeholder.com/638x836?text=Result+${k+1}'">`;
+                        }
+                        window.fusionToggle = !window.fusionToggle; 
+                        grid.style.display = 'grid'; 
+                        act.style.visibility = 'visible'; act.style.opacity = '1'; act.style.pointerEvents = 'auto';
+                    }, 300);
+                });
             }
         }
         run();
@@ -1343,10 +1386,6 @@ window.runFitSimulation = function() {
         if(!document.getElementById('hidden-fit-scene').value) return alert("请先选择渲染场景！");
         if(document.getElementById('fit-upload-placeholder').style.display !== 'none') return alert("请先点击上传 3D 服装渲染图！");
 
-        // 提前加载试衣结果图（预加载）
-        const tempFitImg = new Image();
-        tempFitImg.src = "AI试衣结果图.jpg";
-
         const l = document.getElementById('ai-loader-fit'); 
         const i = document.getElementById('res-img-fit'); 
         const st = document.getElementById('status-fit-txt'); 
@@ -1361,13 +1400,21 @@ window.runFitSimulation = function() {
         
         l.style.display='flex'; 
         f.style.width='0%';
+
+        // 核心：提前加载试衣结果图并监控
+        let imgPromise = new Promise((resolve) => {
+            const tempFitImg = new Image();
+            tempFitImg.onload = () => resolve();
+            tempFitImg.onerror = () => resolve();
+            tempFitImg.src = "AI试衣结果图.jpg";
+        });
         
         let stage = 0; 
         const stages = [
             {p:20, t:"解析 3D 服装网格张力与布料物理参数..."}, 
             {p:50, t:"重构 AI 模特空间姿态与光影深度匹配..."}, 
-            {p:80, t:"执行面部特征无缝迁移 (Face-Swap blending)..."},
-            {p:100, t:"高精度全局光照渲染完成！"}
+            {p:80, t:"执行面部特征无缝迁移..."},
+            {p:99, t:"正在同步渲染最终大图..."}
         ];
         
         function run() {
@@ -1378,11 +1425,20 @@ window.runFitSimulation = function() {
                 stage++; 
                 setTimeout(run, 1000 + Math.random() * 600); 
             } else { 
-                l.style.display='none'; 
-                i.src = "AI试衣结果图.jpg";
-                i.onerror = function() { this.src = "https://via.placeholder.com/800x800/eeeeee/999999?text=AI真人试衣效果图" };
-                i.style.display='block'; 
-                act.style.visibility='visible'; act.style.opacity='1'; act.style.pointerEvents='auto'; 
+                // 等待图片确认下载完成
+                imgPromise.then(() => {
+                    st.innerText = "高精度全局光照渲染完成！";
+                    f.style.width = '100%'; 
+                    p.innerText = '100%'; 
+
+                    setTimeout(() => {
+                        l.style.display='none'; 
+                        i.src = "AI试衣结果图.jpg";
+                        i.onerror = function() { this.src = "https://via.placeholder.com/800x800/eeeeee/999999?text=AI真人试衣效果图" };
+                        i.style.display='block'; 
+                        act.style.visibility='visible'; act.style.opacity='1'; act.style.pointerEvents='auto'; 
+                    }, 300);
+                });
             }
         }
         run();

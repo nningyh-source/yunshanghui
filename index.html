@@ -1339,17 +1339,16 @@
     };
 
     window.runFitSimulation = function() {
-        if(!document.getElementById('hidden-fit-model').value) return alert("请先选择试衣模特！");
-        if(!document.getElementById('hidden-fit-scene').value) return alert("请先选择渲染场景！");
-        if(document.getElementById('fit-upload-placeholder').style.display !== 'none') return alert("请先点击上传 3D 服装渲染图！");
+    if(!document.getElementById('hidden-fit-model').value) return alert("请先选择试衣模特！");
+    if(!document.getElementById('hidden-fit-scene').value) return alert("请先选择渲染场景！");
+    if(document.getElementById('fit-upload-placeholder').style.display !== 'none') return alert("请先点击上传 3D 服装渲染图！");
 
-        const l = document.getElementById('ai-loader-fit'); 
-        const i = document.getElementById('res-img-fit'); 
-        const st = document.getElementById('status-fit-txt'); 
-        const f = document.getElementById('prog-fit-fill'); 
-        const p = document.getElementById('perc-fit-txt'); 
-        const act = document.getElementById('fit-actions');
-        const hint = document.getElementById('hint-txt-fit');
+    // 👇【新增代码开始：提前加载试衣结果图】👇
+    const tempFitImg = new Image();
+    tempFitImg.src = "AI试衣结果图.jpg";
+    // 👆【新增代码结束】👆
+
+    const l = document.getElementById('ai-loader-fit'); 
         
         hint.style.display='none'; 
         i.style.display='none'; 
